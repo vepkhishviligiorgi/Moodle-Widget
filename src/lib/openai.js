@@ -73,19 +73,40 @@ export async function gradeQuestion({
   };
 
   const url = `${resolvedBase}/chat/completions`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify(body),
-    signal
-  });
+
+  let res;
+  let attempt = 0;
+  while (true) {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(body),
+      signal
+    });
+    if (res.status !== 429 || attempt >= 1) break;
+    const retryAfterHeader = parseFloat(res.headers.get("retry-after") || "0");
+    const wait = Math.min(30000, Math.max(2000, (retryAfterHeader || 5) * 1000));
+    await new Promise((r) => setTimeout(r, wait));
+    attempt++;
+  }
 
   if (!res.ok) {
     let detail = "";
-    try { detail = (await res.json())?.error?.message || ""; } catch (_) {}
+    let bodyText = "";
+    try {
+      bodyText = await res.text();
+      const j = JSON.parse(bodyText);
+      detail = j?.error?.message || j?.message || "";
+    } catch (_) { detail = bodyText.slice(0, 300); }
+    if (res.status === 429) {
+      const hint = provider === "gemini"
+        ? " Switch to model gemini-2.0-flash in Options for the most generous free quota (15 RPM / 1500 per day), or wait a minute and retry."
+        : " Wait and retry, or check your provider's quota.";
+      detail = (detail || "rate limit / quota exceeded") + hint;
+    }
     throw new Error(`${PROVIDERS[provider]?.label || provider} ${res.status}: ${detail || res.statusText}`);
   }
 
