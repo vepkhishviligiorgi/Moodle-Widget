@@ -4,6 +4,7 @@
 import { gradeQuestion } from "./lib/openai.js";
 
 const SETTINGS_KEYS = ["apiKey", "model", "systemPrompt", "sendImages"];
+const CONTENT_FILES = ["src/lib/moodle.js", "src/content.js"];
 
 async function getSettings() {
   const out = await chrome.storage.local.get(SETTINGS_KEYS);
@@ -36,6 +37,42 @@ async function getActiveMoodleTab(senderWindowId) {
   return tab || null;
 }
 
+// Programmatically inject content scripts. Used as a fallback when the static
+// content_scripts registration didn't fire — e.g. the tab was open before
+// install, or the URL is at a path the static match pattern misses.
+async function ensureContentScript(tabId) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId, allFrames: false },
+      files: CONTENT_FILES
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+}
+
+// sendMessage with one auto-injection retry on "Receiving end does not exist".
+async function sendToTab(tabId, message) {
+  try {
+    return await chrome.tabs.sendMessage(tabId, message);
+  } catch (e) {
+    const msg = e?.message || String(e);
+    if (!/Receiving end does not exist|Could not establish connection/i.test(msg)) {
+      throw e;
+    }
+    const inj = await ensureContentScript(tabId);
+    if (!inj.ok) {
+      throw new Error(
+        "Could not inject content script into this tab. " +
+        "Open the page on a regular http(s) URL (not chrome://, the Web Store, " +
+        "or a PDF), then click Refresh. Detail: " + inj.error
+      );
+    }
+    return await chrome.tabs.sendMessage(tabId, message);
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
     try {
@@ -51,7 +88,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case "listQuestions": {
           const tab = await getActiveMoodleTab(sender.tab?.windowId);
           if (!tab) { sendResponse({ ok: false, error: "No active tab." }); return; }
-          const res = await chrome.tabs.sendMessage(tab.id, { type: "listQuestions" }).catch((e) => ({ ok: false, error: String(e) }));
+          if (!/^https?:/i.test(tab.url || "")) {
+            sendResponse({ ok: false, error: "Active tab is not an http(s) page. Switch to your Moodle quiz review tab." });
+            return;
+          }
+          const res = await sendToTab(tab.id, { type: "listQuestions" });
           sendResponse({ ...res, tabId: tab.id, url: tab.url });
           return;
         }
@@ -62,7 +103,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const settings = await getSettings();
           if (!settings.apiKey) { sendResponse({ ok: false, error: "Set your OpenAI API key in Options." }); return; }
 
-          const extracted = await chrome.tabs.sendMessage(tab.id, {
+          const extracted = await sendToTab(tab.id, {
             type: "extractSlot",
             slot: msg.slot,
             includeImages: settings.sendImages
@@ -87,9 +128,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case "applyMark": {
           const tab = await getActiveMoodleTab(sender.tab?.windowId);
           if (!tab) { sendResponse({ ok: false, error: "No active tab." }); return; }
-          // Stash the pending mark + comment keyed by attempt+slot in
-          // chrome.storage.session so mark_filler.js can pick it up when the
-          // popup loads.
           const overrideUrl = msg.overrideUrl;
           if (!overrideUrl) { sendResponse({ ok: false, error: "No override URL on this question." }); return; }
 
