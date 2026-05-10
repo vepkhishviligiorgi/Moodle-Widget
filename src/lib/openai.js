@@ -1,12 +1,40 @@
-// OpenAI Chat Completions client. Used from the background service worker.
+// OpenAI-compatible Chat Completions client. Works against any provider that
+// speaks the same wire format: OpenAI, Google Gemini (OpenAI-compat endpoint),
+// OpenRouter, Groq, local Ollama / LM Studio, etc.
 
 import { DEFAULT_SYSTEM_PROMPT, RESPONSE_SCHEMA, buildUserPrompt } from "./rubric.js";
 
-const API_URL = "https://api.openai.com/v1/chat/completions";
+export const PROVIDERS = {
+  openai: {
+    label: "OpenAI",
+    baseUrl: "https://api.openai.com/v1",
+    defaultModel: "gpt-4o",
+    models: ["gpt-4o", "gpt-4o-mini", "gpt-4.1"]
+  },
+  gemini: {
+    label: "Google Gemini (free tier)",
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+    defaultModel: "gemini-2.0-flash",
+    models: ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"]
+  },
+  custom: {
+    label: "Custom (OpenAI-compatible)",
+    baseUrl: "",
+    defaultModel: "",
+    models: []
+  }
+};
+
+export function resolveBaseUrl(provider, customBaseUrl) {
+  if (provider === "custom") return (customBaseUrl || "").replace(/\/+$/, "");
+  return PROVIDERS[provider]?.baseUrl || PROVIDERS.openai.baseUrl;
+}
 
 export async function gradeQuestion({
   apiKey,
-  model = "gpt-4o",
+  provider = "openai",
+  baseUrl,
+  model,
   systemPrompt,
   qtextPlain,
   subQuestions,
@@ -15,7 +43,11 @@ export async function gradeQuestion({
   imageDataUrls = [],
   signal
 }) {
-  if (!apiKey) throw new Error("Missing OpenAI API key. Set it in the extension Options page.");
+  if (!apiKey) throw new Error("Missing API key. Set it in the extension Options page.");
+  const resolvedBase = resolveBaseUrl(provider, baseUrl);
+  if (!resolvedBase) throw new Error("Custom provider needs a Base URL in Options.");
+  const resolvedModel = model || PROVIDERS[provider]?.defaultModel;
+  if (!resolvedModel) throw new Error("No model selected in Options.");
 
   const userText = buildUserPrompt({
     qtextPlain,
@@ -27,11 +59,11 @@ export async function gradeQuestion({
 
   const userContent = [{ type: "text", text: userText }];
   for (const url of imageDataUrls) {
-    userContent.push({ type: "image_url", image_url: { url, detail: "high" } });
+    userContent.push({ type: "image_url", image_url: { url } });
   }
 
   const body = {
-    model,
+    model: resolvedModel,
     temperature: 0,
     response_format: { type: "json_schema", json_schema: RESPONSE_SCHEMA },
     messages: [
@@ -40,7 +72,8 @@ export async function gradeQuestion({
     ]
   };
 
-  const res = await fetch(API_URL, {
+  const url = `${resolvedBase}/chat/completions`;
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -53,17 +86,21 @@ export async function gradeQuestion({
   if (!res.ok) {
     let detail = "";
     try { detail = (await res.json())?.error?.message || ""; } catch (_) {}
-    throw new Error(`OpenAI ${res.status}: ${detail || res.statusText}`);
+    throw new Error(`${PROVIDERS[provider]?.label || provider} ${res.status}: ${detail || res.statusText}`);
   }
 
   const data = await res.json();
   const raw = data?.choices?.[0]?.message?.content;
-  if (!raw) throw new Error("OpenAI returned no content.");
+  if (!raw) throw new Error("Provider returned no content.");
   let parsed;
   try { parsed = JSON.parse(raw); }
-  catch (_) { throw new Error("OpenAI response was not valid JSON."); }
+  catch (_) {
+    // Some providers wrap JSON in markdown fences. Strip and retry.
+    const stripped = raw.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
+    try { parsed = JSON.parse(stripped); }
+    catch (_) { throw new Error("Provider response was not valid JSON."); }
+  }
 
-  // Defensive clamp: never let a hallucinated total exceed the max.
   if (typeof maxMark === "number" && typeof parsed.total === "number" && parsed.total > maxMark) {
     parsed.total = maxMark;
     parsed._clamped = true;

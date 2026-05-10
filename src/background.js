@@ -3,14 +3,17 @@
 
 import { gradeQuestion } from "./lib/openai.js";
 
-const SETTINGS_KEYS = ["apiKey", "model", "systemPrompt", "sendImages"];
+const SETTINGS_KEYS = ["apiKey", "provider", "baseUrl", "model", "systemPrompt", "sendImages"];
 const CONTENT_FILES = ["src/lib/moodle.js", "src/content.js"];
 
 async function getSettings() {
   const out = await chrome.storage.local.get(SETTINGS_KEYS);
+  const provider = out.provider || "gemini";
   return {
     apiKey: out.apiKey || "",
-    model: out.model || "gpt-4o",
+    provider,
+    baseUrl: out.baseUrl || "",
+    model: out.model || "",
     systemPrompt: out.systemPrompt || "",
     sendImages: out.sendImages !== false
   };
@@ -113,6 +116,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const q = extracted.question;
           const grade = await gradeQuestion({
             apiKey: settings.apiKey,
+            provider: settings.provider,
+            baseUrl: settings.baseUrl,
             model: settings.model,
             systemPrompt: settings.systemPrompt,
             qtextPlain: q.qtextPlain,

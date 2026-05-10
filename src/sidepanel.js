@@ -130,9 +130,10 @@ async function load() {
   const settingsResp = await send({ type: "getSettings" });
   const haveKey = settingsResp?.ok && settingsResp.settings.apiKey;
   if (!haveKey) {
-    setStatus("No OpenAI API key set. Open Options to add one.", "warn");
+    setStatus("No API key set. Open Options to add one.", "warn");
   } else {
-    setStatus(`Model: ${settingsResp.settings.model}`);
+    const s = settingsResp.settings;
+    setStatus(`${s.provider}: ${s.model || "(default model)"}`);
   }
 
   const r = await send({ type: "listQuestions" });

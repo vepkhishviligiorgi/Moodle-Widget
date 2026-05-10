@@ -7,7 +7,7 @@
     body { font: 14px/1.5 system-ui, sans-serif; max-width: 640px; margin: 24px auto; padding: 0 16px; color: #1f2328; }
     h1 { font-size: 18px; }
     label { display: block; margin: 14px 0 4px; font-weight: 600; }
-    input[type="text"], input[type="password"], select, textarea {
+    input[type="text"], input[type="password"], input[type="url"], select, textarea {
       width: 100%; padding: 6px 8px; font: inherit;
       border: 1px solid #d0d7de; border-radius: 6px;
     }
@@ -22,30 +22,44 @@
     .saved { color: #1a7f37; font-weight: 600; margin-left: 8px; opacity: 0; transition: opacity .2s; }
     .saved.show { opacity: 1; }
     .warn { background: #fff8c5; border: 1px solid #d4a72c; padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+    .hidden { display: none; }
+    a { color: #0969da; }
   </style>
 </head>
 <body>
   <h1>Moodle Grader — Options</h1>
 
   <div class="warn">
-    Student responses (and optionally images) are sent to OpenAI when you click <strong>Grade with AI</strong>.
-    Confirm this complies with your institution's data policy before using on real student work.
+    Student responses (and optionally images) are sent to your chosen AI provider when you click <strong>Grade with AI</strong>.
+    Free tiers may use your prompts to improve the model — confirm this complies with your institution's data policy before grading real student work.
   </div>
 
-  <label for="apiKey">OpenAI API key</label>
-  <input type="password" id="apiKey" placeholder="sk-…" autocomplete="off">
-  <div class="hint">Stored locally in <code>chrome.storage.local</code>. Recommend a key scoped to a dedicated project with a low spend cap.</div>
+  <label for="provider">Provider</label>
+  <select id="provider">
+    <option value="gemini">Google Gemini (free tier — recommended)</option>
+    <option value="openai">OpenAI (paid)</option>
+    <option value="custom">Custom OpenAI-compatible (Ollama, LM Studio, OpenRouter, Groq…)</option>
+  </select>
+  <div class="hint" id="provider-hint"></div>
+
+  <label for="baseUrl" id="baseUrl-label">Base URL</label>
+  <input type="url" id="baseUrl" placeholder="https://example.com/v1">
+  <div class="hint">Only used when Provider is "Custom". For local Ollama: <code>http://localhost:11434/v1</code>. For LM Studio: <code>http://localhost:1234/v1</code>.</div>
+
+  <label for="apiKey">API key</label>
+  <input type="password" id="apiKey" placeholder="paste your key" autocomplete="off">
+  <div class="hint" id="apiKey-hint">
+    Stored locally in <code>chrome.storage.local</code>. For Gemini, get a free key at
+    <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a> (no credit card).
+  </div>
 
   <label for="model">Model</label>
-  <select id="model">
-    <option value="gpt-4o">gpt-4o (vision, recommended)</option>
-    <option value="gpt-4o-mini">gpt-4o-mini (cheaper, vision)</option>
-    <option value="gpt-4.1">gpt-4.1</option>
-  </select>
+  <select id="model"></select>
+  <div class="hint" id="model-hint"></div>
 
   <div class="row">
     <input type="checkbox" id="sendImages" checked>
-    <label for="sendImages" style="margin: 0; font-weight: normal;">Send question images to OpenAI (needed for image-based questions)</label>
+    <label for="sendImages" style="margin: 0; font-weight: normal;">Send question images to the provider (needed for image-based questions)</label>
   </div>
 
   <label for="systemPrompt">Custom grading rubric / system prompt</label>
@@ -57,6 +71,6 @@
     <span id="saved" class="saved">Saved</span>
   </div>
 
-  <script src="options.js"></script>
+  <script type="module" src="options.js"></script>
 </body>
 </html>

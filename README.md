@@ -15,10 +15,27 @@ A Chrome / Edge extension that sits beside your Moodle quiz attempt review page 
 1. `git clone` this repo.
 2. Open `chrome://extensions` (or `edge://extensions`), enable **Developer mode**.
 3. Click **Load unpacked**, choose this repo's root folder.
-4. Click the extension's toolbar icon to open the side panel, then open **Options** (link in the panel header) and:
-   - Paste your OpenAI API key.
-   - Pick a model (`gpt-4o` recommended for image questions).
-   - Optionally edit the system prompt to match your course's rubric.
+4. Click the extension's toolbar icon to open the side panel, then open **Options** (link in the panel header) and configure a provider.
+
+### Provider options
+
+| Provider | Cost | Vision | Daily cap (free) | Where to get a key |
+|---|---|---|---|---|
+| **Google Gemini** (default) | Free | Yes | ~1500 req/day on `gemini-2.0-flash` | https://aistudio.google.com/app/apikey (no card) |
+| OpenAI | Paid | Yes | n/a | https://platform.openai.com/api-keys |
+| Custom (Ollama / LM Studio / OpenRouter / Groq) | Depends | Depends on model | Depends | Set Base URL + key per provider docs |
+
+50 students/day with 5–10 short-answer questions each fits comfortably inside Gemini's free quota.
+
+**Ollama (fully private, free, runs on your machine):**
+
+```bash
+brew install ollama  # or download from ollama.com
+ollama pull llama3.2-vision
+ollama serve
+```
+
+In Options: Provider = *Custom*, Base URL = `http://localhost:11434/v1`, API key = `ollama` (anything), Model = *Other* → `llama3.2-vision`.
 
 ## Use
 
@@ -31,7 +48,8 @@ A Chrome / Edge extension that sits beside your Moodle quiz attempt review page 
 ## Privacy
 
 - Your API key lives in `chrome.storage.local` on your machine.
-- Student responses (and images, unless you disable that toggle) are sent to OpenAI when you press **Grade**. Confirm this complies with your institution's data policy before grading real attempts.
+- Student responses (and images, unless you disable that toggle) are sent to whichever provider you pick when you press **Grade**.
+- **Free tiers (Gemini, OpenRouter free models) typically use prompts to improve their models.** OpenAI's paid API and a local Ollama install do not. If your institution forbids sending student work to third parties, use Ollama (Custom provider, `http://localhost:11434/v1`).
 - The extension never touches Moodle's grade book on its own — the human always submits the override.
 
 ## File layout
