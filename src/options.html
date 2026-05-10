@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Moodle Grader — Options</title>
+  <style>
+    body { font: 14px/1.5 system-ui, sans-serif; max-width: 640px; margin: 24px auto; padding: 0 16px; color: #1f2328; }
+    h1 { font-size: 18px; }
+    label { display: block; margin: 14px 0 4px; font-weight: 600; }
+    input[type="text"], input[type="password"], select, textarea {
+      width: 100%; padding: 6px 8px; font: inherit;
+      border: 1px solid #d0d7de; border-radius: 6px;
+    }
+    textarea { min-height: 180px; font-family: ui-monospace, monospace; font-size: 12px; }
+    .hint { font-size: 12px; color: #57606a; margin-top: 4px; }
+    .row { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+    button {
+      font: inherit; padding: 6px 14px; border: 1px solid #1a7f37;
+      background: #1a7f37; color: #fff; border-radius: 6px; cursor: pointer;
+    }
+    button:hover { background: #186b2e; }
+    .saved { color: #1a7f37; font-weight: 600; margin-left: 8px; opacity: 0; transition: opacity .2s; }
+    .saved.show { opacity: 1; }
+    .warn { background: #fff8c5; border: 1px solid #d4a72c; padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Moodle Grader — Options</h1>
+
+  <div class="warn">
+    Student responses (and optionally images) are sent to OpenAI when you click <strong>Grade with AI</strong>.
+    Confirm this complies with your institution's data policy before using on real student work.
+  </div>
+
+  <label for="apiKey">OpenAI API key</label>
+  <input type="password" id="apiKey" placeholder="sk-…" autocomplete="off">
+  <div class="hint">Stored locally in <code>chrome.storage.local</code>. Recommend a key scoped to a dedicated project with a low spend cap.</div>
+
+  <label for="model">Model</label>
+  <select id="model">
+    <option value="gpt-4o">gpt-4o (vision, recommended)</option>
+    <option value="gpt-4o-mini">gpt-4o-mini (cheaper, vision)</option>
+    <option value="gpt-4.1">gpt-4.1</option>
+  </select>
+
+  <div class="row">
+    <input type="checkbox" id="sendImages" checked>
+    <label for="sendImages" style="margin: 0; font-weight: normal;">Send question images to OpenAI (needed for image-based questions)</label>
+  </div>
+
+  <label for="systemPrompt">Custom grading rubric / system prompt</label>
+  <textarea id="systemPrompt" placeholder="Leave blank to use the built-in rubric."></textarea>
+  <div class="hint">Override the default examiner instructions. Leave blank to use the built-in rubric (lenient phrasing, strict on accuracy, partial credit allowed).</div>
+
+  <div class="row">
+    <button id="save">Save</button>
+    <span id="saved" class="saved">Saved</span>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

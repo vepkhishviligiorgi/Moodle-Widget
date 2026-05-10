@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Fixture: essay with image</title></head>
+<body>
+<!-- Minimised copy of the Moodle review.php DOM around a single essay question.
+     Class names match Moodle 4.x. Used by tests/moodle.test.html. -->
+<div id="question-101-2" class="que essay">
+  <div class="info">
+    <h3 class="no">Question <span class="qno">2</span></h3>
+    <div class="state">Complete</div>
+    <div class="grade">Mark 0.50 out of 1.00</div>
+    <div class="comment-link"><a href="/mod/quiz/comment.php?attempt=101&amp;slot=2">Make comment or override mark</a></div>
+  </div>
+  <div class="content">
+    <div class="formulation clearfix">
+      <div class="qtext">
+        What is indicated by the black arrow? (0.25) During which part (phase) of the menstrual cycle does this structure develop? (0.25) What is the main function of this structure? (0.5)
+        <p><img src="/pluginfile.php/123/question/questiontext/4/2/histology.png" alt="histology slide with arrow"></p>
+      </div>
+      <div class="ablock">
+        <div class="answer">
+          <div class="qtype_essay_response">it is probably the corpus luteum
+during the secretory phase after ovulation has occured
+corpus luteum secretes estrogen and progestrone</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- An MCQ that should be skipped. -->
+<div id="question-101-1" class="que multichoice">
+  <div class="info"><h3 class="no">Question <span class="qno">1</span></h3><div class="grade">Mark 0.50 out of 0.50</div></div>
+  <div class="content"><div class="formulation"><div class="qtext">Which change is most likely…</div><div class="answer">d. Coiled glands…</div></div></div>
+</div>
+</body>
+</html>

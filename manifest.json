@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Moodle Grader (AI Side-Panel)",
+  "version": "0.1.0",
+  "description": "Side-by-side AI assistant for grading Moodle short-answer / essay quiz attempts. Suggests scores; you click Save in Moodle's own override-mark popup.",
+  "minimum_chrome_version": "116",
+  "permissions": ["storage", "sidePanel", "scripting", "activeTab", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Moodle Grader"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel.html"
+  },
+  "options_page": "src/options.html",
+  "content_scripts": [
+    {
+      "matches": ["*://*/*mod/quiz/review.php*"],
+      "js": ["src/lib/moodle.js", "src/content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*/*mod/quiz/comment.php*"],
+      "js": ["src/mark_filler.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["src/lib/*.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
